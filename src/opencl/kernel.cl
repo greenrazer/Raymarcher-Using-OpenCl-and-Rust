@@ -3,7 +3,7 @@
 
 #define SPHERE 0
 #define SPHERE_POS(a) (float3)(a.s0,a.s1,a.s2)
-#define SPHERE_RADIUS(a) a.s4
+#define SPHERE_RADIUS(a) a.s3
 
 #define FLOORPLANE 1
 #define FLOORPLANE_POS(a) a.s0
