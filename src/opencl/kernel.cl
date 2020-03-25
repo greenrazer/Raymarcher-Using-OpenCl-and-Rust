@@ -1,5 +1,5 @@
 #define SMALLEST_DIST (float)0.01
-#define MAX_ITERATIONS 2
+#define MAX_ITERATIONS 100
 
 #define SPHERE 0
 #define SPHERE_POS(a) (float3)(a.s0,a.s1,a.s2)
@@ -55,7 +55,7 @@ struct SceneDist getPointAtScene( __constant uchar* scene_object_type_buffer,
   float3 curr_point = start;
   uint iterations = 0;
   float dist_to_scene = FLT_MAX;
-  while(dist_to_scene > SMALLEST_DIST || iterations < MAX_ITERATIONS){
+  while(dist_to_scene > SMALLEST_DIST && iterations < MAX_ITERATIONS){
     dist_to_scene = distToScene(scene_object_type_buffer, 
                                       scene_object_data_buffer, 
                                       num_scene_objects, 
