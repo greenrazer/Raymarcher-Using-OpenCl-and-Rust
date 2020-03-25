@@ -77,22 +77,26 @@ float3 getNormal(__constant uchar* scene_object_type_buffer,
                           scene_object_data_buffer,
                           num_scene_objects,
                           point);
+
+  float3 dx = point - (float3)(SMALLEST_DIST, 0, 0);
+  float3 dy = point - (float3)(0, SMALLEST_DIST, 0);
+  float3 dz = point - (float3)(0, 0, SMALLEST_DIST);
   
   float normx = dist - distToScene(scene_object_type_buffer,
                                   scene_object_data_buffer,
                                   num_scene_objects,
-                                  point - (float3)(SMALLEST_DIST, 0, 0));
+                                  dx);
   
   float normy = dist - distToScene(scene_object_type_buffer,
                                   scene_object_data_buffer,
                                   num_scene_objects,
-                                  point - (float3)(0, SMALLEST_DIST, 0));
+                                  dy);
 
   float normz = dist - distToScene(scene_object_type_buffer,
                                   scene_object_data_buffer,
                                   num_scene_objects,
-                                  point - (float3)(0, 0, SMALLEST_DIST));
-
+                                  dz);
+                                  
   return fast_normalize((float3)(normx,normy,normz));
 }
 
@@ -158,8 +162,8 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
   float light = getLight( scene_object_type_buffer, 
                           scene_object_data_buffer, 
                           num_scene_objects,
-                          light_pos,
-                          d.point);
+                          d.point,
+                          light_pos);
   
   uchar light_val = (uchar)(light*255);
   
