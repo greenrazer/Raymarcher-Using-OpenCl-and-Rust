@@ -15,9 +15,9 @@ use sdl2::pixels::Color;
 const WINDOW_WIDTH: u32 = 320;
 const WINDOW_HEIGHT: u32 = 180;
 
-const TIME_INCREMENT: f64 = 0.5;
+const SCENE_TIME_INCREMENT_BETWEEN_FRAMES: f32 = 0.01;
 
-fn render_frame(pro_que: &ProQue) -> Result<(Vec<Uchar3>, Vec<Uint>), ocl::Error> {
+fn render_frame(pro_que: &ProQue, time: f32) -> Result<(Vec<Uchar3>, Vec<Uint>), ocl::Error> {
   let pixel_buffer = pro_que.create_buffer::<Uchar3>()?;
   let iterations_buffer = pro_que.create_buffer::<Uint>()?;
 
@@ -53,6 +53,7 @@ fn render_frame(pro_que: &ProQue) -> Result<(Vec<Uchar3>, Vec<Uint>), ocl::Error
   .arg(num_scene_objects)
   .arg(WINDOW_WIDTH)
   .arg(WINDOW_HEIGHT)
+  .arg(time)
   .build()?;
 
   unsafe { kernel.enq()?; }
@@ -89,6 +90,10 @@ fn main(){
       .build()
       .expect("Could not build ProQue.");
 
+  let mut time: f32 = 0.;
+
+  let mut frames: u64 = 0;
+
   //Draw Loop
   let mut event_pump = sdl.event_pump().unwrap();
   'main: loop {
@@ -102,7 +107,7 @@ fn main(){
     }
     let start = Instant::now();
 
-    let (pixels, iterations) = render_frame(&pro_que).expect("error rendering frame.");
+    let (pixels, iterations) = render_frame(&pro_que, time).expect("error rendering frame.");
 
     for pix in 0..pixels.len() {
       let y: i32 = (pix as u32 / WINDOW_WIDTH) as i32;
@@ -112,14 +117,14 @@ fn main(){
     }
     //Draw Canvas
     canvas.present();
-    let duration = start.elapsed();
-    println!("finished frame took {:?}", duration);
-
-    if duration.as_secs() > 1 {
-      break 'main;
+    let duration = start.elapsed().as_millis();
+    let fps = 1000./(duration as f32);
+    if frames % 300 == 0 {
+      println!("frame {} took {:?}. fps: {}.", frames, duration, fps);
     }
 
-    // time += TIME_INCREMENT;
+    time += SCENE_TIME_INCREMENT_BETWEEN_FRAMES;
+    frames+=1;
     // sleep(Duration::new(0, 1_000_000_000u32 / 60))
   }
 }

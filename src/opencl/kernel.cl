@@ -1,4 +1,5 @@
 #define SMALLEST_DIST (float)0.01
+#define NORMAL_EPSILON (float)0.1
 #define MAX_ITERATIONS 100
 
 #define SPHERE 0
@@ -120,7 +121,7 @@ float getLight (__constant uchar* scene_object_type_buffer,
                             scene_object_data_buffer, 
                             num_scene_objects, 
                             to_light, 
-                            point + scene_normal*SMALLEST_DIST);
+                            point + scene_normal*NORMAL_EPSILON);
 
   if (fast_length(point - d.point) < fast_length(point - light)) {
     light_val = light_val*0.2;
@@ -135,7 +136,8 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
                   __constant float16* scene_object_data_buffer,
                   uint num_scene_objects,
                   uint width, 
-                  uint height) {
+                  uint height,
+                  float time) {
   ulong wid = (ulong)width;
   uint y = (uint) (get_global_id(0) / wid);
   uint x = (uint) (get_global_id(0) % wid);
@@ -143,7 +145,7 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
   float scale = 100;
   float zoom = 1;
   float3 camera_pos = (float3)(0,3,0);
-  float3 light_pos = (float3)(0,10,7);
+  float3 light_pos = (float3)(5*sin(time),10,5*cos(time));
 
   float offx = ((float)x - (float)width/2)/scale;
   float offy = ((float)height/2 - (float)y)/scale;
