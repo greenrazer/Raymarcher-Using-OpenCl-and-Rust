@@ -131,13 +131,11 @@ float getLight (__constant uchar* scene_object_type_buffer,
 }
 
 __kernel void rayCast(__global uchar3* pixel_buffer,
-                  __global uint* iteration_buffer,
                   __constant uchar* scene_object_type_buffer,
                   __constant float16* scene_object_data_buffer,
                   uint num_scene_objects,
                   uint width, 
-                  uint height,
-                  float time) {
+                  uint height) {
   ulong wid = (ulong)width;
   uint y = (uint) (get_global_id(0) / wid);
   uint x = (uint) (get_global_id(0) % wid);
@@ -145,7 +143,7 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
   float scale = 100;
   float zoom = 1;
   float3 camera_pos = (float3)(0,3,0);
-  float3 light_pos = (float3)(5*sin(time),10,5*cos(time));
+  float3 light_pos = (float3)(0,10,5);
 
   float offx = ((float)x - (float)width/2)/scale;
   float offy = ((float)height/2 - (float)y)/scale;
@@ -170,5 +168,4 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
   uchar light_val = (uchar)(light*255);
   
   pixel_buffer[get_global_id(0)] = (uchar3)(light_val,light_val,light_val);
-  iteration_buffer[get_global_id(0)] = d.iterations;
 }

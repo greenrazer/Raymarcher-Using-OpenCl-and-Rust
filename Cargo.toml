@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 ocl = "0.19"
-sdl2 = "0.33.0"
+sdl2 = "0.33"
+
