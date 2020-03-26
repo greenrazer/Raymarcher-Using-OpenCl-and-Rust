@@ -22,6 +22,9 @@ impl SceneObject for Boxx {
     Uchar::new(BOX_KEY)
   }
   fn get_data(&self) -> Float16 {
-    Float16::new(self.position.0,self.position.1,self.position.2,self.scale.0,self.scale.1,self.scale.2,self.rotation.0,self.rotation.1,self.rotation.2,0.,0.,0.,0.,0.,0.,0.)
+    Float16::new(self.position.0,self.position.1,self.position.2,
+      self.scale.0,self.scale.1,self.scale.2,
+      self.rotation.0,self.rotation.1,self.rotation.2,
+      0.,0.,0.,0.,0.,0.,0.)
   }
 }

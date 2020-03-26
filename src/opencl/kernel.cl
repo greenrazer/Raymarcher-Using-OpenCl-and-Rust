@@ -72,7 +72,7 @@ float cylinderDist(float16 cylinder_data, float3 point) {
   return e+i;
 }
 
-float3 vecRotate(float3 pos,float3 rotation, float3 around) {
+float3 vecRotate(float3 pos,float3 rotation) {
   float cosa = cos(rotation.s0);
   float sina = sin(rotation.s0);
 
@@ -82,13 +82,15 @@ float3 vecRotate(float3 pos,float3 rotation, float3 around) {
   float cosc = cos(rotation.s2);
   float sinc = sin(rotation.s2);
 
-  float3 tpos = pos - around;
+  float x = dot((float3)(cosc*cosb, cosc*sinb*sina - sinc*cosa, cosc*sinb*cosa + sinc*sina), pos);
+  float y = dot((float3)(sinc*cosb, sinc*sinb*sina + cosc*cosa, sinc*sinb*cosa - cosc*sina), pos);
+  float z = dot((float3)(-sinb    , cosb*sina                 , cosb*cosa                 ), pos);
 
-  float x = dot((float3)(cosc*cosb, -sinc*cosa + sinc*sinb*sina, sinc*sina + cosc*sinb*cosa), tpos);
-  float y = dot((float3)(sinc*cosb, cosc*cosa + sinc*sinb*sina, -cosc*sina + sinc*sinb*cosa), tpos);
-  float z = dot((float3)(-sinb, cosb*sina, cosb*cosa), tpos);
+  return (float3)(x,y,z);
+}
 
-  return (float3)(x,y,z) + around;
+float3 vecRotateAround(float3 pos,float3 rotation, float3 around) {
+  return vecRotate(pos - around, rotation) + around;
 }
 
 float boxDist( float16 box_data, float3 point)
@@ -97,7 +99,7 @@ float boxDist( float16 box_data, float3 point)
   float3 scale = BOX_SCALING(box_data);
   float3 pos = BOX_POS(box_data);
 
-  float3 tpos = vecRotate(point, rot, pos + scale/2) - pos;
+  float3 tpos = vecRotateAround(point, rot, pos + scale/2) - pos;
 
   float3 q = fabs(tpos) - scale;
   return fast_length(fmax(q,((float)0))) + fmin(fmax(q.x,fmax(q.y,q.z)),(float)0);
@@ -229,15 +231,15 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
   uint x = (uint) (get_global_id(0) % wid);
 
   float scale = 100;
-  float zoom = 2;
-  float3 camera_pos = (float3)(0,3,0);
+  float zoom = 1;
+  float3 camera_pos = (float3)(0,8,-3);
+  float3 camera_rot = (float3)(0,0.,0);
   float3 light_pos = (float3)(0,10,5);
 
   float offx = ((float)x - (float)width/2)/scale;
   float offy = ((float)height/2 - (float)y)/scale;
 
-
-  float3 frame_pos = (float3)(offx,offy,zoom);
+  float3 frame_pos = vecRotate((float3)(offx,offy,zoom), camera_rot);
   float3 direction = fast_normalize(frame_pos);
   float3 start_point = camera_pos + frame_pos;
 
