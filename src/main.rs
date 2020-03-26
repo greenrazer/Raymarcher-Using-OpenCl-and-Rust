@@ -15,12 +15,14 @@ mod scene_objects;
 use scene_objects::scene_object::SceneObject;
 use scene_objects::sphere::Sphere;
 use scene_objects::floor_plane::FloorPlane;
+use scene_objects::capsule::Capsule;
+use scene_objects::cylinder::Cylinder;
 
 mod scene;
 use scene::Scene;
 
-const WINDOW_WIDTH: u32 = 320;
-const WINDOW_HEIGHT: u32 = 180;
+const WINDOW_WIDTH: u32 = 640;
+const WINDOW_HEIGHT: u32 = 320;
 
 const SCENE_TIME_INCREMENT_BETWEEN_FRAMES: f32 = 0.01;
 
@@ -79,6 +81,8 @@ fn main(){
   scene.push(Box::new(Sphere::new((-6.,3.,10.), 3.)));
   scene.push(Box::new(Sphere::new((6.,3.,10.), 3.)));
   scene.push(Box::new(FloorPlane::new(0.)));
+  scene.push(Box::new(Capsule::new((0.,3., 10.),(0.,10., 15.),3.)));
+  scene.push(Box::new(Cylinder::new((-13.,1., 9.),(0.,1., 3.),0.5)));
 
   //Draw Loop
   let mut event_pump = sdl.event_pump().unwrap();

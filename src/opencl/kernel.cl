@@ -10,6 +10,16 @@
 #define FLOORPLANE 1
 #define FLOORPLANE_POS(a) a.s0
 
+#define CAPSULE 2
+#define CAPSULE_POS_1(a) (float3)(a.s0,a.s1,a.s2)
+#define CAPSULE_POS_2(a) (float3)(a.s3,a.s4,a.s5)
+#define CAPSULE_RADIUS(a) a.s6
+
+#define CYLINDER 3
+#define CYLINDER_POS_1(a) (float3)(a.s0,a.s1,a.s2)
+#define CYLINDER_POS_2(a) (float3)(a.s3,a.s4,a.s5)
+#define CYLINDER_RADIUS(a) a.s6
+
 struct SceneDist {
   float3 point;
   uint iterations;
@@ -22,6 +32,39 @@ float sphereDist(float16 sphere_data, float3 point) {
 
 float floorplaneDist(float16 floor_data, float3 point) {
   return point.s1 - FLOORPLANE_POS(floor_data);
+}
+
+float capsuleDist(float16 capsule_data, float3 point) {
+  float3 a = CAPSULE_POS_1(capsule_data);
+  float3 b = CAPSULE_POS_2(capsule_data);
+
+  float3 ab = b-a;
+  float3 ap = point-a;
+  float t = dot(ab, ap) / dot(ab, ab);
+
+  t = clamp(t, (float)0, (float)1);
+
+  float3 proj = a + t*ab;
+    
+  return fast_distance(point, proj) - CAPSULE_RADIUS(capsule_data);
+}
+
+float cylinderDist(float16 cylinder_data, float3 point) {
+  float3 a = CYLINDER_POS_1(cylinder_data);
+  float3 b = CYLINDER_POS_2(cylinder_data);
+
+	float3 ab = b-a;
+  float3 ap = point-a;
+  float t = dot(ab, ap) / dot(ab, ab);
+  
+  float3 proj = a + t*ab;
+  
+  float x = fast_distance(point,proj)-CYLINDER_RADIUS(cylinder_data);
+  float y = (fabs(t-.5)-.5)*fast_length(ab);
+  float e = fast_length(fmax((float2)(x,y), (float)0));
+  float i = fmin(fmax(x, y), (float)0);
+  
+  return e+i;
 }
 
 float distToScene(__constant uchar* scene_object_type_buffer,
@@ -37,6 +80,12 @@ float distToScene(__constant uchar* scene_object_type_buffer,
         break;
       case FLOORPLANE:
         dist = floorplaneDist(scene_object_data_buffer[i], point);
+        break;
+      case CAPSULE:
+        dist = capsuleDist(scene_object_data_buffer[i], point);
+        break;
+      case CYLINDER:
+        dist = cylinderDist(scene_object_data_buffer[i], point);
         break;
       default:
         dist = FLT_MAX;
@@ -114,9 +163,8 @@ float getLight (__constant uchar* scene_object_type_buffer,
 
   float3 to_light = fast_normalize(light - point);
   float light_val = dot(to_light, scene_normal);
-  if (light_val < 0) {
-    light_val = 0;
-  }
+  
+  light_val = clamp(light_val, (float)0 , (float)1);
 
   struct SceneDist d = getPointAtScene(scene_object_type_buffer, 
                             scene_object_data_buffer, 
