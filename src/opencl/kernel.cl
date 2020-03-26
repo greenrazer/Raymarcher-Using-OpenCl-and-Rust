@@ -3,6 +3,11 @@
 #define MAX_ITERATIONS 100
 #define MAX_DIST 100
 
+#define CAMERA_POS(a) (float3)(a.s0,a.s1,a.s2)
+#define CAMERA_ROTATION(a) (float3)(a.s3,a.s4,a.s5)
+#define CAMERA_FRAME_DIST(a) a.s6
+#define CAMERA_SCALE(a) a.s7
+
 #define SPHERE 0
 #define SPHERE_POS(a) (float3)(a.s0,a.s1,a.s2)
 #define SPHERE_RADIUS(a) a.s3
@@ -224,17 +229,18 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
                   __constant uchar* scene_object_type_buffer,
                   __constant float16* scene_object_data_buffer,
                   uint num_scene_objects,
+                  float8 camera_info,
+                  float3 light_pos,
                   uint width, 
                   uint height) {
   ulong wid = (ulong)width;
   uint y = (uint) (get_global_id(0) / wid);
   uint x = (uint) (get_global_id(0) % wid);
 
-  float scale = 100;
-  float zoom = 1;
-  float3 camera_pos = (float3)(0,8,-3);
-  float3 camera_rot = (float3)(0,0.,0);
-  float3 light_pos = (float3)(0,10,5);
+  float scale = CAMERA_SCALE(camera_info);
+  float zoom = CAMERA_FRAME_DIST(camera_info);
+  float3 camera_pos = CAMERA_POS(camera_info);
+  float3 camera_rot = CAMERA_ROTATION(camera_info);
 
   float offx = ((float)x - (float)width/2)/scale;
   float offy = ((float)height/2 - (float)y)/scale;

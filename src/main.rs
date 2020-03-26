@@ -5,7 +5,7 @@ use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 use ocl::ProQue;
-use ocl::prm::{Uchar, Uchar3, Float16, Uint};
+use ocl::prm::{Uchar, Uchar3, Float3, Float16, Uint};
 use ocl::Buffer;
 
 use sdl2::rect::Point;
@@ -22,21 +22,28 @@ use scene_objects::boxx::Boxx;
 mod scene;
 use scene::Scene;
 
+mod camera;
+use camera::Camera;
+
 const WINDOW_WIDTH: u32 = 640;
 const WINDOW_HEIGHT: u32 = 320;
 
 const SCENE_TIME_INCREMENT_BETWEEN_FRAMES: f32 = 0.01;
 
-fn render_frame(pro_que: &ProQue, scene: &Scene) -> Result<Vec<Uchar3>, ocl::Error> {
+fn render_frame(pro_que: &ProQue, camera: &Camera, scene: &Scene) -> Result<Vec<Uchar3>, ocl::Error> {
   let pixel_buffer = pro_que.create_buffer::<Uchar3>()?;
 
   let (num_scene_objects, scene_object_type_buffer, scene_object_data_buffer) = scene.to_ocl_buffer(pro_que)?;
+
+  let point_light_pos = Float3::new(0.,10.,5.);
 
   let kernel = pro_que.kernel_builder("rayCast")
   .arg(&pixel_buffer)
   .arg(&scene_object_type_buffer)
   .arg(&scene_object_data_buffer)
   .arg(num_scene_objects)
+  .arg(camera.get_data())
+  .arg(point_light_pos)
   .arg(WINDOW_WIDTH)
   .arg(WINDOW_HEIGHT)
   .build()?;
@@ -86,6 +93,9 @@ fn main(){
   scene.push(Box::new(Cylinder::new((-13.,1., 9.),(0.,1., 3.),0.5)));
   scene.push(Box::new(Boxx::new((4.,4.,4.),(1.,1., 1.), (std::f32::consts::FRAC_PI_8 ,std::f32::consts::FRAC_PI_8,std::f32::consts::FRAC_PI_8))));
 
+  let fov = 9.;
+  let mut camera = Camera::new((0.,8.,-2. - fov), (0.2,0.,0.), fov , 50.);
+
   //Draw Loop
   let mut event_pump = sdl.event_pump().unwrap();
   'main: loop {
@@ -100,7 +110,7 @@ fn main(){
     let start = Instant::now();
 
     //Render Frame
-    let pixels = render_frame(&pro_que, &scene).expect("error rendering frame.");
+    let pixels = render_frame(&pro_que, &camera, &scene).expect("error rendering frame.");
 
     //Update Canvas
     for pix in 0..pixels.len() {
