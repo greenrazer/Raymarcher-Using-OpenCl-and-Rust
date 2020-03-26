@@ -20,6 +20,11 @@
 #define CYLINDER_POS_2(a) (float3)(a.s3,a.s4,a.s5)
 #define CYLINDER_RADIUS(a) a.s6
 
+#define BOX 4
+#define BOX_POS(a) (float3)(a.s0,a.s1,a.s2)
+#define BOX_SCALING(a) (float3)(a.s3,a.s4,a.s5)
+#define BOX_ROTATION(a) (float3)(a.s6,a.s7,a.s8)
+
 struct SceneDist {
   float3 point;
   uint iterations;
@@ -67,6 +72,37 @@ float cylinderDist(float16 cylinder_data, float3 point) {
   return e+i;
 }
 
+float3 vecRotate(float3 pos,float3 rotation, float3 around) {
+  float cosa = cos(rotation.s0);
+  float sina = sin(rotation.s0);
+
+  float cosb = cos(rotation.s1);
+  float sinb = sin(rotation.s1);
+
+  float cosc = cos(rotation.s2);
+  float sinc = sin(rotation.s2);
+
+  float3 tpos = pos - around;
+
+  float x = dot((float3)(cosc*cosb, -sinc*cosa + sinc*sinb*sina, sinc*sina + cosc*sinb*cosa), tpos);
+  float y = dot((float3)(sinc*cosb, cosc*cosa + sinc*sinb*sina, -cosc*sina + sinc*sinb*cosa), tpos);
+  float z = dot((float3)(-sinb, cosb*sina, cosb*cosa), tpos);
+
+  return (float3)(x,y,z) + around;
+}
+
+float boxDist( float16 box_data, float3 point)
+{
+  float3 rot = BOX_ROTATION(box_data);
+  float3 scale = BOX_SCALING(box_data);
+  float3 pos = BOX_POS(box_data);
+
+  float3 tpos = vecRotate(point, rot, pos + scale/2) - pos;
+
+  float3 q = fabs(tpos) - scale;
+  return fast_length(fmax(q,((float)0))) + fmin(fmax(q.x,fmax(q.y,q.z)),(float)0);
+}
+
 float distToScene(__constant uchar* scene_object_type_buffer,
               __constant float16* scene_object_data_buffer,
               uint num_scene_objects,
@@ -86,6 +122,9 @@ float distToScene(__constant uchar* scene_object_type_buffer,
         break;
       case CYLINDER:
         dist = cylinderDist(scene_object_data_buffer[i], point);
+        break;
+      case BOX:
+        dist = boxDist(scene_object_data_buffer[i], point);
         break;
       default:
         dist = FLT_MAX;
@@ -190,7 +229,7 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
   uint x = (uint) (get_global_id(0) % wid);
 
   float scale = 100;
-  float zoom = 1;
+  float zoom = 2;
   float3 camera_pos = (float3)(0,3,0);
   float3 light_pos = (float3)(0,10,5);
 

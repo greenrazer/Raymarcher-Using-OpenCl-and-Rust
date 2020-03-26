@@ -17,6 +17,7 @@ use scene_objects::sphere::Sphere;
 use scene_objects::floor_plane::FloorPlane;
 use scene_objects::capsule::Capsule;
 use scene_objects::cylinder::Cylinder;
+use scene_objects::boxx::Boxx;
 
 mod scene;
 use scene::Scene;
@@ -79,10 +80,11 @@ fn main(){
   
   let mut scene = Scene::new();
   scene.push(Box::new(Sphere::new((-6.,3.,10.), 3.)));
-  scene.push(Box::new(Sphere::new((6.,3.,10.), 3.)));
+  // scene.push(Box::new(Sphere::new((6.,3.,10.), 3.)));
   scene.push(Box::new(FloorPlane::new(0.)));
   scene.push(Box::new(Capsule::new((0.,3., 10.),(0.,10., 15.),3.)));
   scene.push(Box::new(Cylinder::new((-13.,1., 9.),(0.,1., 3.),0.5)));
+  scene.push(Box::new(Boxx::new((4.,4.,4.),(1.,1., 1.), (std::f32::consts::FRAC_PI_8 ,std::f32::consts::FRAC_PI_8,std::f32::consts::FRAC_PI_8))));
 
   //Draw Loop
   let mut event_pump = sdl.event_pump().unwrap();
