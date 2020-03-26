@@ -74,13 +74,11 @@ fn main(){
 
   let mut time: f32 = 0.;
   let mut frames: u64 = 0;
-
-  let mut scene_objs: Vec<Box<dyn SceneObject>> = Vec::new();
-  scene_objs.push(Box::new(Sphere::new((-6.,3.,10.), 3.)));
-  scene_objs.push(Box::new(Sphere::new((6.,3.,10.), 3.)));
-  scene_objs.push(Box::new(FloorPlane::new(0.)));
-
-  let scene = Scene::new(scene_objs);
+  
+  let mut scene = Scene::new();
+  scene.push(Box::new(Sphere::new((-6.,3.,10.), 3.)));
+  scene.push(Box::new(Sphere::new((6.,3.,10.), 3.)));
+  scene.push(Box::new(FloorPlane::new(0.)));
 
   //Draw Loop
   let mut event_pump = sdl.event_pump().unwrap();

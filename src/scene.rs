@@ -12,8 +12,12 @@ pub struct Scene {
 }
 
 impl Scene {
-  pub fn new(scene: Vec<Box<dyn SceneObject>>) -> Self {
-    Scene {scene_objects: scene}
+  pub fn new() -> Self {
+    Scene {scene_objects: Vec::new()}
+  }
+
+  pub fn push(&mut self, obj: Box<dyn SceneObject>) {
+    self.scene_objects.push(obj);
   }
 
   fn to_ocl_format(&self) -> (Vec<Uchar>, Vec<Float16>) {
