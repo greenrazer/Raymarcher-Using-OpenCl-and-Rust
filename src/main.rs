@@ -26,6 +26,8 @@ use scene::Scene;
 mod camera;
 use camera::Camera;
 
+mod vector3;
+
 const WINDOW_WIDTH: u32 = 640;
 const WINDOW_HEIGHT: u32 = 320;
 
@@ -88,6 +90,7 @@ fn main(){
   scene.push(Box::new(Sphere::new((-6.,3.,10.), 3.)));
   scene.push(Box::new(FloorPlane::new(0.)));
   scene.push(Box::new(Sphere::new((0.,1.,0.), 1.)));
+  scene.push(Box::new(Sphere::new((-10.,25.,15.), 1.)));
   scene.push(Box::new(Capsule::new((0.,3., 10.),(0.,10., 15.),3.)));
   scene.push(Box::new(Cylinder::new((-13.,1., 9.),(0.,1., 3.),0.5)));
   scene.push(Box::new(Boxx::new((4.,4.,4.),(1.,1., 1.), (FRAC_PI_8,FRAC_PI_8,FRAC_PI_8))));
@@ -110,12 +113,12 @@ fn main(){
     }
     let start = Instant::now();
 
-    camera.move_right(0.1);
+    camera.move_right(0.5);
     if (frames % 60) as i64 - 30 < 0 {
       camera.look_at((-6.,3.,10.));
     }
     else {
-      camera.look_at((4.5,4.5,4.5));
+      camera.look_at((-10.,25.,15.));
     }
 
     //Render Frame

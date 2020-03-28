@@ -5,6 +5,8 @@ use ocl::prm::{Float8};
 
 use fast_inv_sqrt::InvSqrt32;
 
+use crate::vector3::Vector3;
+
 pub struct Camera {
   position: (f32, f32, f32),
   look_dir: (f32, f32, f32),
@@ -62,69 +64,39 @@ impl Camera {
 
     self.up_dir = (x,y,z);
   }
-  fn add_vectors(a: (f32, f32, f32), b: (f32, f32, f32)) -> (f32, f32, f32) {
-    (a.0 + b.0, a.1 + b.1, a.2 + b.2)
-  }
-  fn sub_vectors(a: (f32, f32, f32), b: (f32, f32, f32)) -> (f32, f32, f32) {
-    (a.0 - b.0, a.1 - b.1, a.2 - b.2)
-  }
-  fn cross_vectors(a: (f32, f32, f32), b: (f32, f32, f32)) -> (f32, f32, f32) {
-    (a.1*b.2 - a.2*b.1, a.2*b.0 - a.0*b.2, a.0*b.1 - a.1*b.0)
-  }
-  fn dot_vectors(a: (f32, f32, f32), b: (f32, f32, f32)) -> f32 {
-    a.0*b.0 + a.1*b.1 + a.2*b.2
-  }
-  //proj a onto b. b must be normalized.
-  fn proj_vectors(a: (f32, f32, f32), b: (f32, f32, f32)) -> (f32, f32, f32) {
-    Camera::scale_vector(b, Camera::dot_vectors(a,b))
-  }
-  //proj a onto plane defined by normal n. n must be normalized.
-  fn proj_onto_plane(a: (f32, f32, f32), n: (f32, f32, f32)) -> (f32, f32, f32) {
-    Camera::sub_vectors(a, Camera::proj_vectors(a, n))
-  }
-  fn fast_inv_length(a:(f32,f32,f32)) -> f32 {
-    Camera::dot_vectors(a, a).inv_sqrt32()
-  }
-  fn fast_normalize(a:(f32,f32,f32)) -> (f32, f32, f32) {
-    let len = Camera::fast_inv_length(a);
-    (a.0*len, a.1*len, a.2*len)
-  }
-  fn scale_vector(a: (f32, f32, f32), scale: f32) -> (f32, f32, f32) {
-    (a.0*scale, a.1*scale, a.2*scale)
-  }
   pub fn move_forward(&mut self, dist: f32) {
-    self.position = Camera::add_vectors(self.position, Camera::scale_vector(self.look_dir, dist));
+    self.position = self.position.add(self.look_dir.scale(dist));
   }
   pub fn move_right(&mut self, dist: f32) {
-    self.position = Camera::add_vectors(self.position, Camera::scale_vector(self.right_dir, dist));
+    self.position = self.position.add(self.right_dir.scale(dist));
   }
   pub fn move_up(&mut self, dist: f32) {
-    self.position = Camera::add_vectors(self.position, Camera::scale_vector(self.up_dir, dist));
+    self.position = self.position.add(self.up_dir.scale(dist));
   }
   pub fn set_position(&mut self, pos: (f32, f32, f32)) {
     self.position = pos;
   }
-  pub fn rotate_x(&mut self, rad: f32) {
+  pub fn rotate_pitch(&mut self, rad: f32) {
     self.rotation.0 += rad;
     self.calculate_rotation_info();
   }
-  pub fn rotate_y(&mut self, rad: f32) {
+  pub fn rotate_yaw(&mut self, rad: f32) {
     self.rotation.1 += rad;
     self.calculate_rotation_info();
   }
-  pub fn rotate_z(&mut self, rad: f32) {
+  pub fn rotate_roll(&mut self, rad: f32) {
     self.rotation.2 += rad;
     self.calculate_rotation_info();
   }
-  pub fn set_x(&mut self, rad: f32) {
+  pub fn set_pitch(&mut self, rad: f32) {
     self.rotation.0 = rad;
     self.calculate_rotation_info();
   }
-  pub fn set_y(&mut self, rad: f32) {
+  pub fn set_yaw(&mut self, rad: f32) {
     self.rotation.1 = rad;
     self.calculate_rotation_info();
   }
-  pub fn set_z(&mut self, rad: f32) {
+  pub fn set_roll(&mut self, rad: f32) {
     self.rotation.2 = rad;
     self.calculate_rotation_info();
   }
@@ -133,22 +105,23 @@ impl Camera {
     self.calculate_rotation_info();
   }
   pub fn look_at(&mut self, point: (f32, f32, f32)){
-    let to_point = Camera::fast_normalize(Camera::sub_vectors(point, self.position));
+    let to_point = point.sub(self.position).fast_normalize();
 
     //for yaw find the rotation between the positive z axis and the point
-    let to_pointxz = Camera::fast_normalize((to_point.0, 0., to_point.2));
+    let to_pointxz = (to_point.0, 0., to_point.2).fast_normalize();
     let mut angley = to_pointxz.2.acos();
-    let crossy = Camera::cross_vectors((0.,0.,1.), to_pointxz);
+    let crossy = (0., 0., 1.).cross(to_pointxz);
     angley = if crossy.1 < 0. {-angley} else {angley};
-    self.set_y(angley);
+    self.rotation.1 = angley;
+    self.calculate_rotation_info();
     
     // for pitch find the rotation between the look vector projected on the xz axis
     // and the point projected onto the yz axis.
-    let to_point_look_up = Camera::fast_normalize(Camera::proj_onto_plane(to_point, self.right_dir));
-    let lookxz = Camera::fast_normalize((self.look_dir.0, 0., self.look_dir.2));
-    let mut angle_look = Camera::dot_vectors(lookxz, to_point_look_up).acos();
-    let crossx = Camera::cross_vectors(lookxz, to_point_look_up);
-    angle_look = if Camera::dot_vectors(self.right_dir, crossx) < 0. {-angle_look} else {angle_look};
+    let to_point_look_up = to_point.proj_onto_plane(self.right_dir).fast_normalize();
+    let lookxz = (self.look_dir.0, 0., self.look_dir.2).fast_normalize();
+    let mut angle_look = lookxz.dot(to_point_look_up).acos();
+    let crossx = lookxz.cross(to_point_look_up);
+    angle_look = if self.right_dir.dot(crossx) < 0. {-angle_look} else {angle_look};
 
     // the x pitch is zero when the dot product between the z axis and the point is zero.
     // it is angle_look when the dot product between the z axis and the point is one.
