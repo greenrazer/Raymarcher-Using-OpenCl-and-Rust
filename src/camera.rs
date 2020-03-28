@@ -104,27 +104,27 @@ impl Camera {
   pub fn set_position(&mut self, pos: (f32, f32, f32)) {
     self.position = pos;
   }
-  pub fn rotate_pitch(&mut self, rad: f32) {
+  pub fn rotate_x(&mut self, rad: f32) {
     self.rotation.0 += rad;
     self.calculate_rotation_info();
   }
-  pub fn rotate_yaw(&mut self, rad: f32) {
+  pub fn rotate_y(&mut self, rad: f32) {
     self.rotation.1 += rad;
     self.calculate_rotation_info();
   }
-  pub fn rotate_roll(&mut self, rad: f32) {
+  pub fn rotate_z(&mut self, rad: f32) {
     self.rotation.2 += rad;
     self.calculate_rotation_info();
   }
-  pub fn set_pitch(&mut self, rad: f32) {
+  pub fn set_x(&mut self, rad: f32) {
     self.rotation.0 = rad;
     self.calculate_rotation_info();
   }
-  pub fn set_yaw(&mut self, rad: f32) {
+  pub fn set_y(&mut self, rad: f32) {
     self.rotation.1 = rad;
     self.calculate_rotation_info();
   }
-  pub fn set_roll(&mut self, rad: f32) {
+  pub fn set_z(&mut self, rad: f32) {
     self.rotation.2 = rad;
     self.calculate_rotation_info();
   }
@@ -135,19 +135,29 @@ impl Camera {
   pub fn look_at(&mut self, point: (f32, f32, f32)){
     let to_point = Camera::fast_normalize(Camera::sub_vectors(point, self.position));
 
+    //for yaw find the rotation between the positive z axis and the point
     let to_pointxz = Camera::fast_normalize((to_point.0, 0., to_point.2));
     let mut angley = to_pointxz.2.acos();
     let crossy = Camera::cross_vectors((0.,0.,1.), to_pointxz);
     angley = if crossy.1 < 0. {-angley} else {angley};
+    self.set_y(angley);
     
+    // for pitch find the rotation between the look vector projected on the xz axis
+    // and the point projected onto the yz axis.
     let to_point_look_up = Camera::fast_normalize(Camera::proj_onto_plane(to_point, self.right_dir));
     let lookxz = Camera::fast_normalize((self.look_dir.0, 0., self.look_dir.2));
     let mut angle_look = Camera::dot_vectors(lookxz, to_point_look_up).acos();
     let crossx = Camera::cross_vectors(lookxz, to_point_look_up);
     angle_look = if Camera::dot_vectors(self.right_dir, crossx) < 0. {-angle_look} else {angle_look};
+
+    // the x pitch is zero when the dot product between the z axis and the point is zero.
+    // it is angle_look when the dot product between the z axis and the point is one.
+    // the z pitch is zero when the dot produce between the x axis and the point is zero.
+    // it is angle_look when the dot product between the x axis and the point is one.
     let mut anglex = angle_look*to_point.2;
     let mut anglez = -angle_look*to_point.0;
 
+    // when the point is facing the other way in the x direction, invert the x angle.
     if to_point.2 < 0. {
       anglex = -anglex
     }
