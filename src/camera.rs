@@ -153,65 +153,6 @@ impl Camera {
     }
 
     self.set_rotation((anglex, angley, anglez));
-
-    // let mut anglex = angle_look*angley.cos();
-    // let mut anglez = -angle_look*angley.sin();
-
-    // if angley < 0. {
-    //   anglex = -anglex
-    // }
-    
-    // println!("{} {} {}", anglex, angley, anglez);
-    
-    // anglex = if Camera::dot_vectors((1.,0.,0.), to_point) < 0. {anglex} else {anglex*to_point.0};
-    // anglex = if anglex < 0. && Camera::dot_vectors((1.,0.,0.), to_point) < 0. {-anglex} else {anglex};
-    // anglez = if Camera::dot_vectors((0.,0.,1.), to_point) < 0. {anglez} else {anglez*to_point.2};
-    // anglez = if anglez < 0. && Camera::dot_vectors((0.,0.,1.), to_point) < 0. {-anglez} else {anglez};
-
-    // self.set_yaw(angley);
-    // self.set_pitch(anglex);
-
-
-    // let to_pointyz = Camera::fast_normalize((0., to_point.1, to_point.2));
-    // let mut anglex = to_pointyz.2.acos();
-    // let crossx = Camera::cross_vectors((1.,0.,0.), to_pointyz);
-    // anglex = if crossx.0 < 0. {-anglex} else {anglex};
-    // anglex = if anglex > std::f32::consts::FRAC_PI_2 {std::f32::consts::PI - anglex} else {anglex};
-    // anglex = if anglex < 0. {-anglex} else {anglex};
-    // anglex = anglex % std::f32::consts::FRAC_PI_2;
-    // anglex = if anglex > std::f32::consts::FRAC_PI_4 {std::f32::consts::FRAC_PI_2 - anglex} else {anglex};
-    // self.set_pitch(anglex);
-
-
-    // let to_pointxy = Camera::fast_normalize((to_point.0, to_point.1, 0.));
-    // let mut anglez = to_pointxy.0.acos();
-    // let crossz = Camera::cross_vectors((1.,0.,0.), to_pointxy);
-    // anglez = if crossz.0 < 0. {-anglez} else {anglez};
-    // anglez = if anglez > std::f32::consts::FRAC_PI_2 {std::f32::consts::PI - anglez} else {anglez};
-    // self.set_roll(std::f32::consts::FRAC_PI_2 - anglez);
-
-    // println!("{} {}", anglex, anglez);
-
-    // self.set_rotation((anglex, angley, anglez));
-    
-    // let to_pointyz = Camera::fast_normalize(Camera::proj_onto_plane(to_point, self.right_dir));
-    // let mut anglex = Camera::dot_vectors(self.look_dir, to_pointyz).acos();
-    // let crossx = Camera::cross_vectors(self.look_dir, to_pointyz);
-    // anglex = if Camera::dot_vectors(self.right_dir, crossx) < 0. {-anglex} else {anglex};
-    // self.set_pitch(anglex);
-
-    // let to_pointyz = Camera::fast_normalize((0., to_point.1, to_point.2));
-    // let mut anglex = to_pointyz.2.acos();
-    // let crossx = Camera::cross_vectors((0.,0.,1.), to_pointyz);
-    // anglex = if crossx.0 < 0. {-anglex} else {anglex};
-
-    // self.set_pitch(anglex);
-    // std::f32::consts::FRAC_PI_2
-
-    // println!("{} {} {}", anglex, angley, anglez);
-
-    // self.set_rotation((anglex, angley, self.rotation.2));
-    // self.set_rotation((anglex, self.rotation.1, self.rotation.2));
   }
   pub fn get_data(&self) -> Float8 {
     return Float8::new(self.position.0,self.position.1, self.position.2,self.rotation.0,self.rotation.1, self.rotation.2, self.frame_distance, self.scale)

@@ -110,14 +110,13 @@ fn main(){
     }
     let start = Instant::now();
 
-    camera.move_right(0.5);
+    camera.move_right(0.1);
     if (frames % 60) as i64 - 30 < 0 {
       camera.look_at((-6.,3.,10.));
     }
     else {
       camera.look_at((4.5,4.5,4.5));
     }
-    // camera.look_at((-6.,3.,10.));
 
     //Render Frame
     let pixels = render_frame(&pro_que, &camera, &scene).expect("error rendering frame.");
