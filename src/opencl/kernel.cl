@@ -1,4 +1,4 @@
-#define SMALLEST_DIST (float)0.001
+#define SMALLEST_DIST (float)0.01
 #define NORMAL_EPSILON (float)0.1
 #define MAX_ITERATIONS 100
 #define MAX_DIST 100
@@ -245,9 +245,11 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
   float offx = ((float)x - (float)width/2)/scale;
   float offy = ((float)height/2 - (float)y)/scale;
 
-  float3 frame_pos = vecRotate((float3)(offx,offy,zoom), camera_rot);
-  float3 direction = fast_normalize(frame_pos);
-  float3 start_point = camera_pos + frame_pos;
+  float3 direction = (float3)(offx,offy,zoom);
+  direction = vecRotate(direction, camera_rot);
+  direction = fast_normalize(direction);
+
+  float3 start_point = vecRotateAround(camera_pos + (float3)(offx, offy, 0), camera_rot, camera_pos);
 
   struct SceneDist d = getPointAtScene(scene_object_type_buffer, 
                               scene_object_data_buffer, 

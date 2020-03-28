@@ -158,6 +158,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fast_inv_sqrt"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6e61a440b33ad57e53bb01b33438d019d7a7d50a05b9def525c578c0a7e974f"
+
+[[package]]
 name = "fuchsia-cprng"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -388,6 +394,7 @@ checksum = "9c33a3c44ca05fa6f1807d8e6743f3824e8509beca625669633be0acbdf509dc"
 name = "raymarcher_ocl_rust"
 version = "0.1.0"
 dependencies = [
+ "fast_inv_sqrt",
  "ocl",
  "sdl2",
 ]

@@ -3,6 +3,7 @@ extern crate sdl2;
 
 use std::thread::sleep;
 use std::time::{Duration, Instant};
+use std::f32::consts::{FRAC_PI_8, FRAC_PI_4, FRAC_PI_2, PI};
 
 use ocl::ProQue;
 use ocl::prm::{Uchar, Uchar3, Float3, Float16, Uint};
@@ -35,7 +36,7 @@ fn render_frame(pro_que: &ProQue, camera: &Camera, scene: &Scene) -> Result<Vec<
 
   let (num_scene_objects, scene_object_type_buffer, scene_object_data_buffer) = scene.to_ocl_buffer(pro_que)?;
 
-  let point_light_pos = Float3::new(0.,10.,5.);
+  let point_light_pos = Float3::new(0.,20.,5.);
 
   let kernel = pro_que.kernel_builder("rayCast")
   .arg(&pixel_buffer)
@@ -82,19 +83,19 @@ fn main(){
       .build()
       .expect("Could not build ProQue.");
 
-  let mut time: f32 = 0.;
-  let mut frames: u64 = 0;
-  
+      
   let mut scene = Scene::new();
   scene.push(Box::new(Sphere::new((-6.,3.,10.), 3.)));
-  // scene.push(Box::new(Sphere::new((6.,3.,10.), 3.)));
   scene.push(Box::new(FloorPlane::new(0.)));
+  scene.push(Box::new(Sphere::new((0.,1.,0.), 1.)));
   scene.push(Box::new(Capsule::new((0.,3., 10.),(0.,10., 15.),3.)));
   scene.push(Box::new(Cylinder::new((-13.,1., 9.),(0.,1., 3.),0.5)));
-  scene.push(Box::new(Boxx::new((4.,4.,4.),(1.,1., 1.), (std::f32::consts::FRAC_PI_8 ,std::f32::consts::FRAC_PI_8,std::f32::consts::FRAC_PI_8))));
-
-  let fov = 9.;
-  let mut camera = Camera::new((0.,8.,-2. - fov), (0.2,0.,0.), fov , 50.);
+  scene.push(Box::new(Boxx::new((4.,4.,4.),(1.,1., 1.), (FRAC_PI_8,FRAC_PI_8,FRAC_PI_8))));
+  
+  let mut camera = Camera::new((0.,10.,-10.), (0.,0.,0.), 100. , 20.);
+      
+  let mut time: f32 = 0.;
+  let mut frames: u64 = 0;
 
   //Draw Loop
   let mut event_pump = sdl.event_pump().unwrap();
@@ -109,6 +110,15 @@ fn main(){
     }
     let start = Instant::now();
 
+    camera.move_right(0.5);
+    if (frames % 60) as i64 - 30 < 0 {
+      camera.look_at((-6.,3.,10.));
+    }
+    else {
+      camera.look_at((4.5,4.5,4.5));
+    }
+    // camera.look_at((-6.,3.,10.));
+
     //Render Frame
     let pixels = render_frame(&pro_que, &camera, &scene).expect("error rendering frame.");
 
@@ -119,6 +129,9 @@ fn main(){
       canvas.set_draw_color(Color::RGB(pixels[pix][0], pixels[pix][1], pixels[pix][2]));
       canvas.draw_point(Point::new(x,y)).expect("Could not draw point.");
     }
+
+    canvas.set_draw_color(Color::RGB(255, 0, 0));
+    canvas.draw_point(Point::new(WINDOW_WIDTH as i32/2,WINDOW_HEIGHT as i32/2)).expect("Could not draw point.");
 
     //Draw Canvas
     canvas.present();

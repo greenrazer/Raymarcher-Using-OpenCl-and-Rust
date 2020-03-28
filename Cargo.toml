@@ -9,4 +9,5 @@ edition = "2018"
 [dependencies]
 ocl = "0.19"
 sdl2 = "0.33"
+fast_inv_sqrt = "1.0"
 
