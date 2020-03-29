@@ -3,6 +3,8 @@
 #define MAX_ITERATIONS 100
 #define MAX_DIST 100
 
+#define SCALE_UCHAR3_BY_FLOAT(a, f) (uchar3)((uchar)(((float)a.s0)*f), (uchar)(((float)a.s1)*f), (uchar)(((float)a.s2)*f));
+
 #define CAMERA_POS(a) (float3)(a.s0,a.s1,a.s2)
 #define CAMERA_ROTATION(a) (float3)(a.s3,a.s4,a.s5)
 #define CAMERA_FRAME_DIST(a) a.s6
@@ -30,9 +32,15 @@
 #define BOX_SCALING(a) (float3)(a.s3,a.s4,a.s5)
 #define BOX_ROTATION(a) (float3)(a.s6,a.s7,a.s8)
 
-struct SceneDist {
+struct ClosePoint {
   float3 point;
   uint iterations;
+  uint obj_index;
+};
+
+struct SceneDist {
+  float dist;
+  uint obj_index;
 };
 
 float sphereDist(float16 sphere_data, float3 point) {
@@ -110,11 +118,12 @@ float boxDist( float16 box_data, float3 point)
   return fast_length(fmax(q,((float)0))) + fmin(fmax(q.x,fmax(q.y,q.z)),(float)0);
 }
 
-float distToScene(__constant uchar* scene_object_type_buffer,
+struct SceneDist distToScene(__constant uchar* scene_object_type_buffer,
               __constant float16* scene_object_data_buffer,
               uint num_scene_objects,
               float3 point) {
   float min_dist = FLT_MAX;
+  uint min_obj = 0;
   for(uint i = 0; i < num_scene_objects; i++){
     float dist;
     switch (scene_object_type_buffer[i]) {
@@ -139,30 +148,34 @@ float distToScene(__constant uchar* scene_object_type_buffer,
     }
     if (dist < min_dist) {
       min_dist = dist;
+      min_obj = i;
     }
   }
-  return min_dist;
+  return (struct SceneDist){min_dist, min_obj};
 }
 
-struct SceneDist getPointAtScene( __constant uchar* scene_object_type_buffer,
+struct ClosePoint getPointAtScene( __constant uchar* scene_object_type_buffer,
                       __constant float16* scene_object_data_buffer,
                       uint num_scene_objects,
                       float3 direction,
                       float3 start) {
   float3 curr_point = start;
   uint iterations = 0;
+  uint obj_index = 0;
   float dist_to_scene = MAX_DIST-SMALLEST_DIST;
   while(dist_to_scene < MAX_DIST && dist_to_scene > SMALLEST_DIST && iterations < MAX_ITERATIONS){
-    dist_to_scene = distToScene(scene_object_type_buffer, 
+    struct SceneDist to_scene = distToScene(scene_object_type_buffer, 
                                       scene_object_data_buffer, 
                                       num_scene_objects, 
                                       curr_point);
 
-    curr_point = curr_point + direction*dist_to_scene;
+    dist_to_scene = to_scene.dist;
+    obj_index = to_scene.obj_index;
 
+    curr_point = curr_point + direction*dist_to_scene;
     iterations++;
   }
-  return (struct SceneDist){curr_point, iterations};
+  return (struct ClosePoint){curr_point, iterations, obj_index};
 }
 
 float3 getNormal(__constant uchar* scene_object_type_buffer,
@@ -173,7 +186,7 @@ float3 getNormal(__constant uchar* scene_object_type_buffer,
   float dist = distToScene(scene_object_type_buffer,
                           scene_object_data_buffer,
                           num_scene_objects,
-                          point);
+                          point).dist;
 
   float3 dx = point - (float3)(SMALLEST_DIST, 0, 0);
   float3 dy = point - (float3)(0, SMALLEST_DIST, 0);
@@ -182,17 +195,17 @@ float3 getNormal(__constant uchar* scene_object_type_buffer,
   float normx = dist - distToScene(scene_object_type_buffer,
                                   scene_object_data_buffer,
                                   num_scene_objects,
-                                  dx);
+                                  dx).dist;
   
   float normy = dist - distToScene(scene_object_type_buffer,
                                   scene_object_data_buffer,
                                   num_scene_objects,
-                                  dy);
+                                  dy).dist;
 
   float normz = dist - distToScene(scene_object_type_buffer,
                                   scene_object_data_buffer,
                                   num_scene_objects,
-                                  dz);
+                                  dz).dist;
                                   
   return fast_normalize((float3)(normx,normy,normz));
 }
@@ -212,7 +225,7 @@ float getLight (__constant uchar* scene_object_type_buffer,
   
   light_val = clamp(light_val, (float)0 , (float)1);
 
-  struct SceneDist d = getPointAtScene(scene_object_type_buffer, 
+  struct ClosePoint d = getPointAtScene(scene_object_type_buffer, 
                             scene_object_data_buffer, 
                             num_scene_objects, 
                             to_light, 
@@ -228,6 +241,7 @@ float getLight (__constant uchar* scene_object_type_buffer,
 __kernel void rayCast(__global uchar3* pixel_buffer,
                   __constant uchar* scene_object_type_buffer,
                   __constant float16* scene_object_data_buffer,
+                  __constant uchar3* scene_object_color_buffer,
                   uint num_scene_objects,
                   float8 camera_info,
                   float3 light_pos,
@@ -251,7 +265,7 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
 
   float3 start_point = vecRotateAround(camera_pos + (float3)(offx, offy, 0), camera_rot, camera_pos);
 
-  struct SceneDist d = getPointAtScene(scene_object_type_buffer, 
+  struct ClosePoint d = getPointAtScene(scene_object_type_buffer, 
                               scene_object_data_buffer, 
                               num_scene_objects, 
                               direction, 
@@ -263,7 +277,7 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
                           d.point,
                           light_pos);
   
-  uchar light_val = (uchar)(light*255);
+  uchar3 color = scene_object_color_buffer[d.obj_index];
   
-  pixel_buffer[get_global_id(0)] = (uchar3)(light_val,light_val,light_val);
+  pixel_buffer[get_global_id(0)] = SCALE_UCHAR3_BY_FLOAT(color, light);
 }

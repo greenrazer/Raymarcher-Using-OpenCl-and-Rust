@@ -1,19 +1,20 @@
 extern crate ocl;
 
 use super::scene_object::SceneObject;
-use ocl::prm::{Uchar, Float16};
+use ocl::prm::{Uchar, Uchar3, Float16};
 
 const BOX_KEY: u8 = 4;
 
 pub struct Boxx {
   position: (f32, f32, f32),
   scale: (f32, f32, f32),
-  rotation: (f32, f32, f32)
+  rotation: (f32, f32, f32),
+  color: (u8, u8, u8)
 }
 
 impl Boxx {
-  pub fn new(position: (f32, f32, f32), scale: (f32, f32, f32), rotation: (f32, f32, f32)) -> Self {
-    Boxx {position: position, scale: scale, rotation: rotation}
+  pub fn new(position: (f32, f32, f32), scale: (f32, f32, f32), rotation: (f32, f32, f32), color: (u8, u8, u8)) -> Self {
+    Boxx {position: position, scale: scale, rotation: rotation, color:color}
   }
 }
 
@@ -26,5 +27,8 @@ impl SceneObject for Boxx {
       self.scale.0,self.scale.1,self.scale.2,
       self.rotation.0,self.rotation.1,self.rotation.2,
       0.,0.,0.,0.,0.,0.,0.)
+  }
+  fn get_color(&self) -> Uchar3 {
+    Uchar3::new(self.color.0, self.color.1, self.color.2)
   }
 }

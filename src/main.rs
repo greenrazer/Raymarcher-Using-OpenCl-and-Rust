@@ -36,7 +36,10 @@ const SCENE_TIME_INCREMENT_BETWEEN_FRAMES: f32 = 0.01;
 fn render_frame(pro_que: &ProQue, camera: &Camera, scene: &Scene) -> Result<Vec<Uchar3>, ocl::Error> {
   let pixel_buffer = pro_que.create_buffer::<Uchar3>()?;
 
-  let (num_scene_objects, scene_object_type_buffer, scene_object_data_buffer) = scene.to_ocl_buffer(pro_que)?;
+  let (num_scene_objects, 
+      scene_object_type_buffer, 
+      scene_object_data_buffer, 
+      scene_object_color_buffer) = scene.to_ocl_buffer(pro_que)?;
 
   let point_light_pos = Float3::new(0.,20.,5.);
 
@@ -44,6 +47,7 @@ fn render_frame(pro_que: &ProQue, camera: &Camera, scene: &Scene) -> Result<Vec<
   .arg(&pixel_buffer)
   .arg(&scene_object_type_buffer)
   .arg(&scene_object_data_buffer)
+  .arg(&scene_object_color_buffer)
   .arg(num_scene_objects)
   .arg(camera.get_data())
   .arg(point_light_pos)
@@ -87,13 +91,14 @@ fn main(){
 
       
   let mut scene = Scene::new();
-  scene.push(Box::new(Sphere::new((-6.,3.,10.), 3.)));
-  scene.push(Box::new(FloorPlane::new(0.)));
-  scene.push(Box::new(Sphere::new((0.,1.,0.), 1.)));
-  scene.push(Box::new(Sphere::new((-10.,25.,15.), 1.)));
-  scene.push(Box::new(Capsule::new((0.,3., 10.),(0.,10., 15.),3.)));
-  scene.push(Box::new(Cylinder::new((-13.,1., 9.),(0.,1., 3.),0.5)));
-  scene.push(Box::new(Boxx::new((4.,4.,4.),(1.,1., 1.), (FRAC_PI_8,FRAC_PI_8,FRAC_PI_8))));
+  scene.push(Box::new(Sphere::new((-6.,3.,10.), 3., (255, 0, 0))));
+  scene.push(Box::new(FloorPlane::new(0., (255, 255, 255))));
+  scene.push(Box::new(Sphere::new((0.,1.,0.), 1., (255, 255, 255))));
+  scene.push(Box::new(Sphere::new((-10.,25.,15.), 1., (255, 255, 255))));
+  scene.push(Box::new(Capsule::new((0.,3., 10.),(0.,10., 15.),3., (0, 255, 0))));
+  scene.push(Box::new(Cylinder::new((-13.,1., 9.),(0.,1., 3.),0.5, (0, 0, 255))));
+  scene.push(Box::new(Boxx::new((4.,4.,4.),(1.,1., 1.), (FRAC_PI_8,FRAC_PI_8,FRAC_PI_8), (255, 0, 255))));
+  scene.push(Box::new(Boxx::new((6.,3.,10.),(1.,1., 1.), (FRAC_PI_4,FRAC_PI_8,FRAC_PI_2/3.), (0, 255, 255))));
   
   let mut camera = Camera::new((0.,10.,-10.), (0.,0.,0.), 100. , 20.);
       
@@ -114,12 +119,19 @@ fn main(){
     let start = Instant::now();
 
     camera.move_right(0.5);
-    if (frames % 60) as i64 - 30 < 0 {
-      camera.look_at((-6.,3.,10.));
+    if (10.*time).sin() < 0. {
+      camera.move_forward(-0.3);
     }
     else {
-      camera.look_at((-10.,25.,15.));
+      camera.move_forward(0.3);
     }
+    camera.look_at((-6.,3.,10.));
+    // if (frames % 60) as i64 - 30 < 0 {
+    //   camera.look_at((-6.,3.,10.));
+    // }
+    // else {
+    //   camera.look_at((-10.,25.,15.));
+    // }
 
     //Render Frame
     let pixels = render_frame(&pro_que, &camera, &scene).expect("error rendering frame.");
