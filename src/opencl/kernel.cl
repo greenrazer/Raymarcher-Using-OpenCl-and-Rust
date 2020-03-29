@@ -2,40 +2,45 @@
 #define NORMAL_EPSILON (float)0.1
 #define MAX_ITERATIONS 100
 #define MAX_DIST 100
+#define MAX_REFLECTION_DEPTH 3
+#define MIN_REFLECTION_CUTOFF 0.05
 
-#define SCALE_UCHAR3_BY_FLOAT(a, f) (uchar3)((uchar)(((float)a.s0)*f), (uchar)(((float)a.s1)*f), (uchar)(((float)a.s2)*f));
+#define SCALE_UCHAR3_BY_FLOAT(a, f) (uchar3)((uchar)((float)a.s0*f), (uchar)((float)a.s1*f), (uchar)((float)a.s2*f))
 
-#define CAMERA_POS(a) (float3)(a.s0,a.s1,a.s2)
-#define CAMERA_ROTATION(a) (float3)(a.s3,a.s4,a.s5)
+#define CAMERA_POS(a) a.s012
+#define CAMERA_ROTATION(a) a.s345
 #define CAMERA_FRAME_DIST(a) a.s6
 #define CAMERA_SCALE(a) a.s7
 
+#define REFLECTIVITY(a) a.sF
+
 #define SPHERE 0
-#define SPHERE_POS(a) (float3)(a.s0,a.s1,a.s2)
+#define SPHERE_POS(a) a.s012
 #define SPHERE_RADIUS(a) a.s3
 
 #define FLOORPLANE 1
 #define FLOORPLANE_POS(a) a.s0
 
 #define CAPSULE 2
-#define CAPSULE_POS_1(a) (float3)(a.s0,a.s1,a.s2)
-#define CAPSULE_POS_2(a) (float3)(a.s3,a.s4,a.s5)
+#define CAPSULE_POS_1(a) a.s012
+#define CAPSULE_POS_2(a) a.s345
 #define CAPSULE_RADIUS(a) a.s6
 
 #define CYLINDER 3
-#define CYLINDER_POS_1(a) (float3)(a.s0,a.s1,a.s2)
-#define CYLINDER_POS_2(a) (float3)(a.s3,a.s4,a.s5)
+#define CYLINDER_POS_1(a) a.s012
+#define CYLINDER_POS_2(a) a.s345
 #define CYLINDER_RADIUS(a) a.s6
 
 #define BOX 4
-#define BOX_POS(a) (float3)(a.s0,a.s1,a.s2)
-#define BOX_SCALING(a) (float3)(a.s3,a.s4,a.s5)
-#define BOX_ROTATION(a) (float3)(a.s6,a.s7,a.s8)
+#define BOX_POS(a) a.s012
+#define BOX_SCALING(a) a.s345
+#define BOX_ROTATION(a) a.s678
 
 struct ClosePoint {
   float3 point;
   uint iterations;
   uint obj_index;
+  bool out_of_bounds;
 };
 
 struct SceneDist {
@@ -175,7 +180,8 @@ struct ClosePoint getPointAtScene( __constant uchar* scene_object_type_buffer,
     curr_point = curr_point + direction*dist_to_scene;
     iterations++;
   }
-  return (struct ClosePoint){curr_point, iterations, obj_index};
+  bool out_of_bounds = dist_to_scene >= MAX_DIST || iterations >= MAX_ITERATIONS;
+  return (struct ClosePoint){curr_point, iterations, obj_index, out_of_bounds};
 }
 
 float3 getNormal(__constant uchar* scene_object_type_buffer,
@@ -238,6 +244,58 @@ float getLight (__constant uchar* scene_object_type_buffer,
   return light_val;
 }
 
+float3 getReflection(float3 in, float3 normal) {
+  return in - 2*dot(in,normal)*normal;
+}
+
+uchar3 rayCastHelper(__constant uchar* scene_object_type_buffer,
+                  __constant float16* scene_object_data_buffer,
+                  __constant uchar3* scene_object_color_buffer,
+                  uint num_scene_objects,
+                  float3 light_pos,
+                  float3 start_point,
+                  float3 direction,
+                  uint reflect_depth){
+
+  struct ClosePoint d = getPointAtScene(scene_object_type_buffer, 
+                              scene_object_data_buffer, 
+                              num_scene_objects, 
+                              direction, 
+                              start_point);
+
+  float light = getLight( scene_object_type_buffer, 
+                          scene_object_data_buffer, 
+                          num_scene_objects,
+                          d.point,
+                          light_pos);
+  
+  uchar3 color = scene_object_color_buffer[d.obj_index];
+
+  float reflectivity = REFLECTIVITY(scene_object_data_buffer[d.obj_index]);
+
+  if(d.out_of_bounds || reflect_depth >= MAX_REFLECTION_DEPTH || reflectivity/(float)reflect_depth < MIN_REFLECTION_CUTOFF){
+    return SCALE_UCHAR3_BY_FLOAT(color, light);
+  }
+
+  float3 scene_normal = getNormal(scene_object_type_buffer,
+                                scene_object_data_buffer,
+                                num_scene_objects,
+                                d.point);
+
+  float3 new_direction = getReflection(direction, scene_normal);
+
+  uchar3 reflect_color = rayCastHelper(scene_object_type_buffer,
+                                      scene_object_data_buffer,
+                                      scene_object_color_buffer,
+                                      num_scene_objects,
+                                      light_pos,
+                                      d.point + scene_normal*NORMAL_EPSILON,
+                                      new_direction,
+                                      reflect_depth + 1);
+
+  return SCALE_UCHAR3_BY_FLOAT(color, light*(1.-reflectivity)) + SCALE_UCHAR3_BY_FLOAT(reflect_color, reflectivity);
+}
+
 __kernel void rayCast(__global uchar3* pixel_buffer,
                   __constant uchar* scene_object_type_buffer,
                   __constant float16* scene_object_data_buffer,
@@ -265,19 +323,14 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
 
   float3 start_point = vecRotateAround(camera_pos + (float3)(offx, offy, 0), camera_rot, camera_pos);
 
-  struct ClosePoint d = getPointAtScene(scene_object_type_buffer, 
-                              scene_object_data_buffer, 
-                              num_scene_objects, 
-                              direction, 
-                              start_point);
-
-  float light = getLight( scene_object_type_buffer, 
-                          scene_object_data_buffer, 
-                          num_scene_objects,
-                          d.point,
-                          light_pos);
+  uchar3 color = rayCastHelper(scene_object_type_buffer,
+                                      scene_object_data_buffer,
+                                      scene_object_color_buffer,
+                                      num_scene_objects,
+                                      light_pos,
+                                      start_point,
+                                      direction,
+                                      0);
   
-  uchar3 color = scene_object_color_buffer[d.obj_index];
-  
-  pixel_buffer[get_global_id(0)] = SCALE_UCHAR3_BY_FLOAT(color, light);
+  pixel_buffer[get_global_id(0)] = color;
 }

@@ -13,6 +13,7 @@ use sdl2::rect::Point;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::mouse::MouseButton;
 
 mod scene_objects;
 use scene_objects::sphere::Sphere;
@@ -92,14 +93,14 @@ fn main(){
 
       
   let mut scene = Scene::new();
-  scene.push(Box::new(Sphere::new((-6.,3.,10.), 3., (255, 0, 0))));
-  scene.push(Box::new(FloorPlane::new(0., (255, 255, 255))));
-  scene.push(Box::new(Sphere::new((0.,1.,0.), 1., (255, 255, 255))));
-  scene.push(Box::new(Sphere::new((-10.,25.,15.), 1., (255, 255, 255))));
-  scene.push(Box::new(Capsule::new((0.,3., 10.),(0.,10., 15.),3., (0, 255, 0))));
-  scene.push(Box::new(Cylinder::new((-13.,1., 9.),(0.,1., 3.),0.5, (0, 0, 255))));
-  scene.push(Box::new(Boxx::new((4.,4.,4.),(1.,1., 1.), (FRAC_PI_8,FRAC_PI_8,FRAC_PI_8), (255, 0, 255))));
-  scene.push(Box::new(Boxx::new((6.,3.,10.),(1.,1., 1.), (FRAC_PI_4,FRAC_PI_8,FRAC_PI_2/3.), (0, 255, 255))));
+  scene.push(Box::new(Sphere::new((-6.,3.,10.), 3., (255, 0, 0), 1.)));
+  scene.push(Box::new(FloorPlane::new(0., (255, 255, 255), 0.)));
+  scene.push(Box::new(Sphere::new((0.,1.,0.), 1., (255, 255, 255), 0.1)));
+  scene.push(Box::new(Sphere::new((-10.,25.,15.), 1., (255, 255, 255), 0.2)));
+  scene.push(Box::new(Capsule::new((0.,3., 10.),(0.,10., 15.),3., (0, 255, 0), 0.3)));
+  scene.push(Box::new(Cylinder::new((-13.,1., 9.),(0.,1., 3.),0.5, (0, 0, 255), 0.)));
+  scene.push(Box::new(Boxx::new((4.,4.,4.),(1.,1., 1.), (FRAC_PI_8,FRAC_PI_8,FRAC_PI_8), (255, 0, 255), 1.)));
+  scene.push(Box::new(Boxx::new((6.,3.,10.),(1.,1., 1.), (FRAC_PI_4,FRAC_PI_8,FRAC_PI_2/3.), (0, 255, 255), 0.3)));
 
   let mut camera = Camera::new((0.,10.,-10.), (0.,0.,0.), 100. , 20.);
 
@@ -145,13 +146,11 @@ fn main(){
     prev_keys = held_keys;
 
     //Handle Mouse Input
-    let mouse_state = event_pump.relative_mouse_state();
-    // let mouse_state = event_pump.mouse_state();
-    println!("Relative - X = {:?}, Y = {:?}", mouse_state.x(), mouse_state.y());
-    camera.yaw( 0.01*(mouse_state.x() as f32));
-    camera.pitch( 0.01*(mouse_state.y() as f32));
-
-
+    if event_pump.mouse_state().is_mouse_button_pressed(MouseButton::Left) {
+      let mouse_state = event_pump.relative_mouse_state();
+      camera.yaw( 0.01*(mouse_state.x() as f32));
+      camera.pitch( 0.01*(mouse_state.y() as f32));
+    }
 
     let move_speed = 0.5;
     if move_forward {
