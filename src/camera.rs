@@ -3,8 +3,6 @@ extern crate fast_inv_sqrt;
 
 use ocl::prm::{Float8};
 
-use fast_inv_sqrt::InvSqrt32;
-
 use crate::vector3::Vector3;
 
 pub struct Camera {
@@ -125,15 +123,13 @@ impl Camera {
 
     // the x pitch is zero when the dot product between the z axis and the point is zero.
     // it is angle_look when the dot product between the z axis and the point is one.
+    let mut anglex = angle_look*to_point.2;
+    // when the point is facing the other way in the x direction, invert the x angle.
+    anglex = if to_point.2 < 0. {-anglex} else {anglex};
+    
     // the z pitch is zero when the dot produce between the x axis and the point is zero.
     // it is angle_look when the dot product between the x axis and the point is one.
-    let mut anglex = angle_look*to_point.2;
-    let mut anglez = -angle_look*to_point.0;
-
-    // when the point is facing the other way in the x direction, invert the x angle.
-    if to_point.2 < 0. {
-      anglex = -anglex
-    }
+    let anglez = -angle_look*to_point.0;
 
     self.set_rotation((anglex, angley, anglez));
   }

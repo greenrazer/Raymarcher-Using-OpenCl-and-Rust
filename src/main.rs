@@ -1,19 +1,17 @@
 extern crate ocl;
 extern crate sdl2;
 
-use std::thread::sleep;
-use std::time::{Duration, Instant};
+use std::time::Instant;
+#[allow(unused_imports)]
 use std::f32::consts::{FRAC_PI_8, FRAC_PI_4, FRAC_PI_2, PI};
 
 use ocl::ProQue;
-use ocl::prm::{Uchar, Uchar3, Float3, Float16, Uint};
-use ocl::Buffer;
+use ocl::prm::{Uchar3, Float3};
 
 use sdl2::rect::Point;
 use sdl2::pixels::Color;
 
 mod scene_objects;
-use scene_objects::scene_object::SceneObject;
 use scene_objects::sphere::Sphere;
 use scene_objects::floor_plane::FloorPlane;
 use scene_objects::capsule::Capsule;
