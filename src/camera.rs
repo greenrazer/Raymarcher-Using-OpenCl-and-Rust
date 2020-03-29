@@ -74,20 +74,33 @@ impl Camera {
   pub fn set_position(&mut self, pos: (f32, f32, f32)) {
     self.position = pos;
   }
-  pub fn rotate_pitch(&mut self, rad: f32) {
-    self.rotation.0 += rad;
+  pub fn pitch(&mut self, rad: f32){
+    let curr_pitch = self.rotation.0/self.rotation_cos.1;
+    
+    let mut anglex = (curr_pitch + rad)*self.rotation_cos.1;
+    anglex = if self.rotation_cos.1 < 0. {-anglex} else {anglex};
+    
+    let anglez = -(curr_pitch + rad)*self.rotation_sin.1;
+
+    self.rotation.0 = anglex;
+    self.rotation.2 = anglez;
     self.calculate_rotation_info();
   }
-  pub fn rotate_yaw(&mut self, rad: f32) {
+  pub fn yaw(&mut self, rad: f32){
     self.rotation.1 += rad;
     self.calculate_rotation_info();
   }
-  pub fn rotate_roll(&mut self, rad: f32) {
-    self.rotation.2 += rad;
-    self.calculate_rotation_info();
+  pub fn roll(&mut self, rad: f32){
+
   }
   pub fn set_pitch(&mut self, rad: f32) {
-    self.rotation.0 = rad;
+    let mut anglex = rad*self.rotation_cos.1;
+    anglex = if self.rotation_cos.1 < 0. {-anglex} else {anglex};
+    
+    let anglez = -rad*self.rotation_sin.1;
+
+    self.rotation.0 = anglex;
+    self.rotation.2 = anglez;
     self.calculate_rotation_info();
   }
   pub fn set_yaw(&mut self, rad: f32) {
@@ -95,7 +108,13 @@ impl Camera {
     self.calculate_rotation_info();
   }
   pub fn set_roll(&mut self, rad: f32) {
-    self.rotation.2 = rad;
+    let mut anglex = rad*self.rotation_sin.1;
+    anglex = if self.rotation_sin.1 < 0. {-anglex} else {anglex};
+    
+    let anglez = -rad*self.rotation_cos.1;
+
+    self.rotation.0 = anglex;
+    self.rotation.2 = anglez;
     self.calculate_rotation_info();
   }
   pub fn set_rotation(&mut self, rads: (f32, f32, f32)) {

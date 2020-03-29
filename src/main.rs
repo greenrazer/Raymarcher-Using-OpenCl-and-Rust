@@ -4,12 +4,15 @@ extern crate sdl2;
 use std::time::Instant;
 #[allow(unused_imports)]
 use std::f32::consts::{FRAC_PI_8, FRAC_PI_4, FRAC_PI_2, PI};
+use std::collections::HashSet;
 
 use ocl::ProQue;
 use ocl::prm::{Uchar3, Float3};
 
 use sdl2::rect::Point;
 use sdl2::pixels::Color;
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 
 mod scene_objects;
 use scene_objects::sphere::Sphere;
@@ -97,9 +100,11 @@ fn main(){
   scene.push(Box::new(Cylinder::new((-13.,1., 9.),(0.,1., 3.),0.5, (0, 0, 255))));
   scene.push(Box::new(Boxx::new((4.,4.,4.),(1.,1., 1.), (FRAC_PI_8,FRAC_PI_8,FRAC_PI_8), (255, 0, 255))));
   scene.push(Box::new(Boxx::new((6.,3.,10.),(1.,1., 1.), (FRAC_PI_4,FRAC_PI_8,FRAC_PI_2/3.), (0, 255, 255))));
-  
+
   let mut camera = Camera::new((0.,10.,-10.), (0.,0.,0.), 100. , 20.);
-      
+
+  let mut prev_keys = HashSet::new();
+
   let mut time: f32 = 0.;
   let mut frames: u64 = 0;
 
@@ -116,20 +121,75 @@ fn main(){
     }
     let start = Instant::now();
 
-    camera.move_right(0.5);
-    if (10.*time).sin() < 0. {
-      camera.move_forward(-0.3);
+    let mut move_forward = false;
+    let mut move_left = false;
+    let mut move_right = false;
+    let mut move_backward = false;
+    let mut move_up = false;
+    let mut move_down = false;
+
+    // Handle Keyboard Input
+    let held_keys = event_pump.keyboard_state().pressed_scancodes().filter_map(Keycode::from_scancode).collect();
+    let started_keys = &held_keys - &prev_keys;
+    for key in held_keys.iter() {
+      match key {
+        Keycode::W => move_forward = true,
+        Keycode::A => move_left = true,
+        Keycode::D => move_right = true,
+        Keycode::S => move_backward = true,
+        Keycode::Q => move_up = true,
+        Keycode::E => move_down = true,
+        _ => {}
+      }
     }
-    else {
-      camera.move_forward(0.3);
+    prev_keys = held_keys;
+
+    //Handle Mouse Input
+    let mouse_state = event_pump.relative_mouse_state();
+    // let mouse_state = event_pump.mouse_state();
+    println!("Relative - X = {:?}, Y = {:?}", mouse_state.x(), mouse_state.y());
+    camera.yaw( 0.01*(mouse_state.x() as f32));
+    camera.pitch( 0.01*(mouse_state.y() as f32));
+
+
+
+    let move_speed = 0.5;
+    if move_forward {
+      camera.move_forward(move_speed);
     }
-    camera.look_at((-6.,3.,10.));
+    if move_backward {
+      camera.move_forward(-move_speed);
+    }
+    if move_right {
+      camera.move_right(move_speed);
+    }
+    if move_left {
+      camera.move_right(-move_speed);
+    }
+    if move_up {
+      camera.move_up(move_speed);
+    }
+    if move_down {
+      camera.move_up(-move_speed);
+    }
+
+
+    // camera.move_right(0.5);
+    // if (10.*time).sin() < 0. {
+    //   camera.move_forward(-0.3);
+    // }
+    // else {
+    //   camera.move_forward(0.3);
+    // }
+    // camera.look_at((-6.,3.,10.));
     // if (frames % 60) as i64 - 30 < 0 {
     //   camera.look_at((-6.,3.,10.));
     // }
     // else {
     //   camera.look_at((-10.,25.,15.));
     // }
+    // camera.set_yaw((10.*time).cos());
+    // camera.set_pitch((10.*time).sin());
 
     //Render Frame
     let pixels = render_frame(&pro_que, &camera, &scene).expect("error rendering frame.");
