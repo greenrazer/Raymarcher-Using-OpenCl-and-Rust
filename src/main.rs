@@ -39,17 +39,15 @@ fn render_frame(pro_que: &ProQue, camera: &Camera, scene: &Scene) -> Result<Vec<
   let pixel_buffer = pro_que.create_buffer::<Uchar3>()?;
 
   let (num_scene_objects, 
-      scene_object_type_buffer, 
-      scene_object_data_buffer, 
-      scene_object_color_buffer) = scene.to_ocl_buffer(pro_que)?;
+      scene_object_integer_buffer, 
+      scene_object_float_buffer) = scene.to_ocl_buffer(pro_que)?;
 
   let point_light_pos = Float3::new(0.,20.,5.);
 
   let kernel = pro_que.kernel_builder("rayCast")
   .arg(&pixel_buffer)
-  .arg(&scene_object_type_buffer)
-  .arg(&scene_object_data_buffer)
-  .arg(&scene_object_color_buffer)
+  .arg(&scene_object_integer_buffer)
+  .arg(&scene_object_float_buffer)
   .arg(num_scene_objects)
   .arg(camera.get_data())
   .arg(point_light_pos)

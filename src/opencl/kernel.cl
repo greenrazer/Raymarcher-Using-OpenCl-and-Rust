@@ -7,6 +7,9 @@
 
 #define SCALE_UCHAR3_BY_FLOAT(a, f) (uchar3)((uchar)((float)a.s0*f), (uchar)((float)a.s1*f), (uchar)((float)a.s2*f))
 
+#define OBJECT_TYPE(a) a.s0
+#define OBJECT_COLOR(a) a.s123
+
 #define CAMERA_POS(a) a.s012
 #define CAMERA_ROTATION(a) a.s345
 #define CAMERA_FRAME_DIST(a) a.s6
@@ -123,29 +126,29 @@ float boxDist( float16 box_data, float3 point)
   return fast_length(fmax(q,((float)0))) + fmin(fmax(q.x,fmax(q.y,q.z)),(float)0);
 }
 
-struct SceneDist distToScene(__constant uchar* scene_object_type_buffer,
-              __constant float16* scene_object_data_buffer,
+struct SceneDist distToScene(__constant uchar8* scene_object_integer_data_buffer,
+              __constant float16* scene_object_float_data_buffer,
               uint num_scene_objects,
               float3 point) {
   float min_dist = FLT_MAX;
   uint min_obj = 0;
   for(uint i = 0; i < num_scene_objects; i++){
     float dist;
-    switch (scene_object_type_buffer[i]) {
+    switch ( OBJECT_TYPE(scene_object_integer_data_buffer[i]) ) {
       case SPHERE:
-        dist = sphereDist(scene_object_data_buffer[i], point);
+        dist = sphereDist(scene_object_float_data_buffer[i], point);
         break;
       case FLOORPLANE:
-        dist = floorplaneDist(scene_object_data_buffer[i], point);
+        dist = floorplaneDist(scene_object_float_data_buffer[i], point);
         break;
       case CAPSULE:
-        dist = capsuleDist(scene_object_data_buffer[i], point);
+        dist = capsuleDist(scene_object_float_data_buffer[i], point);
         break;
       case CYLINDER:
-        dist = cylinderDist(scene_object_data_buffer[i], point);
+        dist = cylinderDist(scene_object_float_data_buffer[i], point);
         break;
       case BOX:
-        dist = boxDist(scene_object_data_buffer[i], point);
+        dist = boxDist(scene_object_float_data_buffer[i], point);
         break;
       default:
         dist = FLT_MAX;
@@ -159,8 +162,8 @@ struct SceneDist distToScene(__constant uchar* scene_object_type_buffer,
   return (struct SceneDist){min_dist, min_obj};
 }
 
-struct ClosePoint getPointAtScene( __constant uchar* scene_object_type_buffer,
-                      __constant float16* scene_object_data_buffer,
+struct ClosePoint getPointAtScene( __constant uchar8* scene_object_integer_data_buffer,
+                      __constant float16* scene_object_float_data_buffer,
                       uint num_scene_objects,
                       float3 direction,
                       float3 start) {
@@ -169,8 +172,8 @@ struct ClosePoint getPointAtScene( __constant uchar* scene_object_type_buffer,
   uint obj_index = 0;
   float dist_to_scene = MAX_DIST-SMALLEST_DIST;
   while(dist_to_scene < MAX_DIST && dist_to_scene > SMALLEST_DIST && iterations < MAX_ITERATIONS){
-    struct SceneDist to_scene = distToScene(scene_object_type_buffer, 
-                                      scene_object_data_buffer, 
+    struct SceneDist to_scene = distToScene(scene_object_integer_data_buffer, 
+                                      scene_object_float_data_buffer, 
                                       num_scene_objects, 
                                       curr_point);
 
@@ -184,13 +187,13 @@ struct ClosePoint getPointAtScene( __constant uchar* scene_object_type_buffer,
   return (struct ClosePoint){curr_point, iterations, obj_index, out_of_bounds};
 }
 
-float3 getNormal(__constant uchar* scene_object_type_buffer,
-                __constant float16* scene_object_data_buffer,
+float3 getNormal(__constant uchar8* scene_object_integer_data_buffer,
+                __constant float16* scene_object_float_data_buffer,
                 uint num_scene_objects,
                 float3 point) {
   
-  float dist = distToScene(scene_object_type_buffer,
-                          scene_object_data_buffer,
+  float dist = distToScene(scene_object_integer_data_buffer,
+                          scene_object_float_data_buffer,
                           num_scene_objects,
                           point).dist;
 
@@ -198,31 +201,31 @@ float3 getNormal(__constant uchar* scene_object_type_buffer,
   float3 dy = point - (float3)(0, SMALLEST_DIST, 0);
   float3 dz = point - (float3)(0, 0, SMALLEST_DIST);
   
-  float normx = dist - distToScene(scene_object_type_buffer,
-                                  scene_object_data_buffer,
+  float normx = dist - distToScene(scene_object_integer_data_buffer,
+                                  scene_object_float_data_buffer,
                                   num_scene_objects,
                                   dx).dist;
   
-  float normy = dist - distToScene(scene_object_type_buffer,
-                                  scene_object_data_buffer,
+  float normy = dist - distToScene(scene_object_integer_data_buffer,
+                                  scene_object_float_data_buffer,
                                   num_scene_objects,
                                   dy).dist;
 
-  float normz = dist - distToScene(scene_object_type_buffer,
-                                  scene_object_data_buffer,
+  float normz = dist - distToScene(scene_object_integer_data_buffer,
+                                  scene_object_float_data_buffer,
                                   num_scene_objects,
                                   dz).dist;
                                   
   return fast_normalize((float3)(normx,normy,normz));
 }
 
-float getLight (__constant uchar* scene_object_type_buffer,
-                __constant float16* scene_object_data_buffer,
+float getLight (__constant uchar8* scene_object_integer_data_buffer,
+                __constant float16* scene_object_float_data_buffer,
                 uint num_scene_objects,
                 float3 point,
                 float3 light){
-  float3 scene_normal = getNormal(scene_object_type_buffer,
-                                scene_object_data_buffer,
+  float3 scene_normal = getNormal(scene_object_integer_data_buffer,
+                                scene_object_float_data_buffer,
                                 num_scene_objects,
                                 point);
 
@@ -231,8 +234,8 @@ float getLight (__constant uchar* scene_object_type_buffer,
   
   light_val = clamp(light_val, (float)0 , (float)1);
 
-  struct ClosePoint d = getPointAtScene(scene_object_type_buffer, 
-                            scene_object_data_buffer, 
+  struct ClosePoint d = getPointAtScene(scene_object_integer_data_buffer, 
+                            scene_object_float_data_buffer, 
                             num_scene_objects, 
                             to_light, 
                             point + scene_normal*NORMAL_EPSILON);
@@ -248,45 +251,43 @@ float3 getReflection(float3 in, float3 normal) {
   return in - 2*dot(in,normal)*normal;
 }
 
-uchar3 rayCastHelper(__constant uchar* scene_object_type_buffer,
-                  __constant float16* scene_object_data_buffer,
-                  __constant uchar3* scene_object_color_buffer,
+uchar3 rayCastHelper(__constant uchar8* scene_object_integer_data_buffer,
+                  __constant float16* scene_object_float_data_buffer,
                   uint num_scene_objects,
                   float3 light_pos,
                   float3 start_point,
                   float3 direction,
                   uint reflect_depth){
 
-  struct ClosePoint d = getPointAtScene(scene_object_type_buffer, 
-                              scene_object_data_buffer, 
+  struct ClosePoint d = getPointAtScene(scene_object_integer_data_buffer, 
+                              scene_object_float_data_buffer, 
                               num_scene_objects, 
                               direction, 
                               start_point);
 
-  float light = getLight( scene_object_type_buffer, 
-                          scene_object_data_buffer, 
+  float light = getLight( scene_object_integer_data_buffer, 
+                          scene_object_float_data_buffer, 
                           num_scene_objects,
                           d.point,
                           light_pos);
   
-  uchar3 color = scene_object_color_buffer[d.obj_index];
+  uchar3 color = OBJECT_COLOR(scene_object_integer_data_buffer[d.obj_index]);
 
-  float reflectivity = REFLECTIVITY(scene_object_data_buffer[d.obj_index]);
+  float reflectivity = REFLECTIVITY(scene_object_float_data_buffer[d.obj_index]);
 
   if(d.out_of_bounds || reflect_depth >= MAX_REFLECTION_DEPTH || reflectivity/(float)reflect_depth < MIN_REFLECTION_CUTOFF){
     return SCALE_UCHAR3_BY_FLOAT(color, light);
   }
 
-  float3 scene_normal = getNormal(scene_object_type_buffer,
-                                scene_object_data_buffer,
+  float3 scene_normal = getNormal(scene_object_integer_data_buffer,
+                                scene_object_float_data_buffer,
                                 num_scene_objects,
                                 d.point);
 
   float3 new_direction = getReflection(direction, scene_normal);
 
-  uchar3 reflect_color = rayCastHelper(scene_object_type_buffer,
-                                      scene_object_data_buffer,
-                                      scene_object_color_buffer,
+  uchar3 reflect_color = rayCastHelper(scene_object_integer_data_buffer,
+                                      scene_object_float_data_buffer,
                                       num_scene_objects,
                                       light_pos,
                                       d.point + scene_normal*NORMAL_EPSILON,
@@ -297,9 +298,8 @@ uchar3 rayCastHelper(__constant uchar* scene_object_type_buffer,
 }
 
 __kernel void rayCast(__global uchar3* pixel_buffer,
-                  __constant uchar* scene_object_type_buffer,
-                  __constant float16* scene_object_data_buffer,
-                  __constant uchar3* scene_object_color_buffer,
+                  __constant uchar8* scene_object_integer_data_buffer,
+                  __constant float16* scene_object_float_data_buffer,
                   uint num_scene_objects,
                   float8 camera_info,
                   float3 light_pos,
@@ -323,9 +323,8 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
 
   float3 start_point = vecRotateAround(camera_pos + (float3)(offx, offy, 0), camera_rot, camera_pos);
 
-  uchar3 color = rayCastHelper(scene_object_type_buffer,
-                                      scene_object_data_buffer,
-                                      scene_object_color_buffer,
+  uchar3 color = rayCastHelper(scene_object_integer_data_buffer,
+                                      scene_object_float_data_buffer,
                                       num_scene_objects,
                                       light_pos,
                                       start_point,
