@@ -1,5 +1,7 @@
 extern crate ocl;
-extern crate sdl2;
+extern crate minifb;
+
+use minifb::{Key, Window, WindowOptions, MouseMode, KeyRepeat, MouseButton};
 
 use std::time::Instant;
 #[allow(unused_imports)]
@@ -7,13 +9,7 @@ use std::f32::consts::{FRAC_PI_8, FRAC_PI_4, FRAC_PI_2, PI};
 use std::collections::HashSet;
 
 use ocl::ProQue;
-use ocl::prm::{Uchar3, Float3};
-
-use sdl2::rect::Point;
-use sdl2::pixels::Color;
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
-use sdl2::mouse::MouseButton;
+use ocl::prm::{Uint, Float3};
 
 mod scene_objects;
 use scene_objects::sphere::Sphere;
@@ -35,8 +31,8 @@ const WINDOW_HEIGHT: u32 = 320;
 
 const SCENE_TIME_INCREMENT_BETWEEN_FRAMES: f32 = 0.01;
 
-fn render_frame(pro_que: &ProQue, camera: &Camera, scene: &Scene) -> Result<Vec<Uchar3>, ocl::Error> {
-  let pixel_buffer = pro_que.create_buffer::<Uchar3>()?;
+fn render_frame(pro_que: &ProQue, camera: &Camera, scene: &Scene) -> Result<Vec<Uint>, ocl::Error> {
+  let pixel_buffer = pro_que.create_buffer::<Uint>()?;
 
   let (num_scene_objects, 
       scene_object_integer_buffer, 
@@ -59,7 +55,7 @@ fn render_frame(pro_que: &ProQue, camera: &Camera, scene: &Scene) -> Result<Vec<
     kernel.enq()?;
   }
 
-  let mut pixels = vec![Uchar3::zero(); pixel_buffer.len()];
+  let mut pixels = vec![Uint::zero(); pixel_buffer.len()];
   pixel_buffer.read(&mut pixels).enq()?;
 
   Ok(pixels)
@@ -67,19 +63,15 @@ fn render_frame(pro_que: &ProQue, camera: &Camera, scene: &Scene) -> Result<Vec<
 
 fn main(){
 
-  // Setup Window and Canvas
-  let sdl = sdl2::init().unwrap();
-  let video_subsystem = sdl.video().unwrap();
-  let window = video_subsystem
-    .window("Ray Tracing Demo", WINDOW_WIDTH, WINDOW_HEIGHT)
-    .build()
-    .unwrap();
-  
-  let mut canvas = window
-    .into_canvas()
-    // .present_vsync()
-    .build()
-    .unwrap();
+  let mut window = Window::new(
+      "Test - ESC to exit",
+      WINDOW_WIDTH as usize,
+      WINDOW_HEIGHT as usize,
+      WindowOptions::default(),
+  )
+  .unwrap_or_else(|e| {
+      panic!("{}", e);
+  });
 
   let src = include_str!("opencl/kernel.cl");
 
@@ -102,22 +94,18 @@ fn main(){
 
   let mut camera = Camera::new((0.,10.,-10.), (0.,0.,0.), 100. , 20.);
 
-  let mut prev_keys = HashSet::new();
-
   let mut time: f32 = 0.;
   let mut frames: u64 = 0;
 
-  //Draw Loop
-  let mut event_pump = sdl.event_pump().unwrap();
-  'main: loop {
+  let mut buffer: Vec<u32> = vec![0; (WINDOW_WIDTH * WINDOW_HEIGHT) as usize];
 
-    //Quit out of program
-    for event in event_pump.poll_iter() {
-      match event {
-        sdl2::event::Event::Quit { .. } => break 'main,
-        _ => {}
-      }
-    }
+  let mut last_mouse: (f32, f32) = (0.,0.);
+
+  //limit fps to 60
+  window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+
+  //Draw Loop
+  while window.is_open() && !window.is_key_down(Key::Escape) {
     let start = Instant::now();
 
     let mut move_forward = false;
@@ -128,26 +116,29 @@ fn main(){
     let mut move_down = false;
 
     // Handle Keyboard Input
-    let held_keys = event_pump.keyboard_state().pressed_scancodes().filter_map(Keycode::from_scancode).collect();
-    let started_keys = &held_keys - &prev_keys;
-    for key in held_keys.iter() {
-      match key {
-        Keycode::W => move_forward = true,
-        Keycode::A => move_left = true,
-        Keycode::D => move_right = true,
-        Keycode::S => move_backward = true,
-        Keycode::Q => move_up = true,
-        Keycode::E => move_down = true,
-        _ => {}
+    window.get_keys().map(|keys| {
+      for t in keys {
+          match t {
+            Key::W => move_forward = true,
+            Key::A => move_left = true,
+            Key::D => move_right = true,
+            Key::S => move_backward = true,
+            Key::Q => move_up = true,
+            Key::E => move_down = true,
+            _ => {}
+          }
       }
-    }
-    prev_keys = held_keys;
+    });
 
     //Handle Mouse Input
-    if event_pump.mouse_state().is_mouse_button_pressed(MouseButton::Left) {
-      let mouse_state = event_pump.relative_mouse_state();
-      camera.yaw( 0.01*(mouse_state.x() as f32));
-      camera.pitch( 0.01*(mouse_state.y() as f32));
+    if window.get_mouse_down(MouseButton::Left) {
+      window.get_mouse_pos(MouseMode::Clamp).map(|mouse| {
+        let mouse_x = mouse.0 - (WINDOW_WIDTH as f32)/2.;
+        let mouse_y = (WINDOW_HEIGHT as f32)/2. - mouse.1;
+        camera.yaw(0.01*(mouse_x - last_mouse.0));
+        camera.pitch(0.01*(last_mouse.1 - mouse_y));
+        last_mouse = (mouse_x, mouse_y);
+      });
     }
 
     let move_speed = 0.5;
@@ -190,20 +181,23 @@ fn main(){
 
     //Render Frame
     let pixels = render_frame(&pro_que, &camera, &scene).expect("error rendering frame.");
-
+    
     //Update Canvas
     for pix in 0..pixels.len() {
-      let y: i32 = (pix as u32 / WINDOW_WIDTH) as i32;
-      let x: i32 = (pix as u32 % WINDOW_WIDTH) as i32;
-      canvas.set_draw_color(Color::RGB(pixels[pix][0], pixels[pix][1], pixels[pix][2]));
-      canvas.draw_point(Point::new(x,y)).expect("Could not draw point.");
+      buffer[pix] = pixels[pix][0]
+      // let y: i32 = (pix as u32 / WINDOW_WIDTH) as i32;
+      // let x: i32 = (pix as u32 % WINDOW_WIDTH) as i32;
+      // canvas.set_draw_color(Color::RGB(pixels[pix][0], pixels[pix][1], pixels[pix][2]));
+      // canvas.draw_point(Point::new(x,y)).expect("Could not draw point.");
     }
 
-    canvas.set_draw_color(Color::RGB(255, 0, 0));
-    canvas.draw_point(Point::new(WINDOW_WIDTH as i32/2,WINDOW_HEIGHT as i32/2)).expect("Could not draw point.");
+    window.update_with_buffer(&buffer, WINDOW_WIDTH as usize, WINDOW_HEIGHT as usize).unwrap();
+
+    // canvas.set_draw_color(Color::RGB(255, 0, 0));
+    // canvas.draw_point(Point::new(WINDOW_WIDTH as i32/2,WINDOW_HEIGHT as i32/2)).expect("Could not draw point.");
 
     //Draw Canvas
-    canvas.present();
+    // canvas.present();
 
     //Print Stats
     let duration = start.elapsed().as_millis();

@@ -297,7 +297,7 @@ uchar3 rayCastHelper(__constant uchar8* scene_object_integer_data_buffer,
   return SCALE_UCHAR3_BY_FLOAT(color, light*(1.-reflectivity)) + SCALE_UCHAR3_BY_FLOAT(reflect_color, reflectivity);
 }
 
-__kernel void rayCast(__global uchar3* pixel_buffer,
+__kernel void rayCast(__global uint* pixel_buffer,
                   __constant uchar8* scene_object_integer_data_buffer,
                   __constant float16* scene_object_float_data_buffer,
                   uint num_scene_objects,
@@ -331,5 +331,5 @@ __kernel void rayCast(__global uchar3* pixel_buffer,
                                       direction,
                                       0);
   
-  pixel_buffer[get_global_id(0)] = color;
+  pixel_buffer[get_global_id(0)] = (uint)color.s0 << 16 | (uint)color.s1 << 8 | (uint)color.s2;
 }
